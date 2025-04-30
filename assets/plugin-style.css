@@ -1,0 +1,92 @@
+
+
+*{
+    margin: 0;
+    padding:0;
+}
+  .temoignage > .figure {
+    grid-area: 1 / 1 / 5 / 2;
+    box-shadow: 0 0 5px rgb(94, 212, 212), 0 0 10px rgb(94, 212, 212),
+      0 0 20px rgb(94, 212, 212), 0 0 40px rgb(94, 212, 212);
+    border-radius: 10px;
+    width: 100%;
+    max-width: 9.3rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .temoignage > .figure > .photo-temoin {
+    border-radius: 10px;
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+  form {
+    display: block !important;
+  }
+  .liste-temoignages {
+    margin: 0 auto;
+    padding: 1rem;
+    width: 60%;
+  }
+  .temoignage {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-column-gap: 16px;
+    grid-row-gap: 16px;
+    margin: 0 auto;
+    margin-bottom: 3rem;
+    box-shadow: 0 0 5px rgb(94, 212, 212), 0 0 10px rgb(94, 212, 212),
+      0 0 20px rgb(94, 212, 212), 0 0 40px rgb(94, 212, 212);
+    border-radius: 10px;
+    padding: 1rem;
+  }
+  .temoignages > h3 {
+    grid-area: 1 / 2 / 2 / 3;
+  }
+  .contenu {
+    grid-area: 2 / 2 / 4 / 3;
+  }
+  .note {
+    grid-area: 4 / 2 / 5 / 3;
+  }
+  form {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    grid-gap: 1rem;
+  }
+  
+  .ligneForm label {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0.5rem;
+  }
+  
+  .ligneForm input,
+  .ligneForm textarea {
+    width: 50%;
+    border-radius: 10px;
+    padding: 1rem;
+  }
+  
+  .ligneForm textarea {
+    min-height: 100px;
+  }
+  
+  .submit {
+    grid-column: span 2;
+    justify-self: center;
+    padding: 10px 20px;
+    background-color: rgb(94, 212, 212);
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 10px;
+  }
+  
+  .submit:hover {
+    background-color: #fff;
+    color: #000;
+  }
+  
