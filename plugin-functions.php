@@ -1,6 +1,9 @@
 <?php
 function afficher_temoignages_shortcode($atts)
 {
+    if (!is_singular()) {
+        return ''; // Ne rien afficher si ce n'est pas une page/article unique
+    }
     $post_id = get_the_ID();
 
     $atts = shortcode_atts([
@@ -26,43 +29,47 @@ function afficher_temoignages_shortcode($atts)
             $entreprise = get_post_meta(get_the_ID(), 'entreprise', true);
             $poste = get_post_meta(get_the_ID(), 'poste', true);
             $note = get_field('note');
-            $couleur_fond = get_option('couleur_fond_temoignage', '#ffffff');
-            $couleur_texte = get_option('couleur_text_temoignage', '#000000');
+            // Nouveau code correct
+            $options = get_option('options_couleurs_temoignage');
+            $couleur_fond = isset($options['couleur_fond']) ? $options['couleur_fond'] : '#ffffff';
+            $couleur_texte = isset($options['couleur_text']) ? $options['couleur_text'] : '#000000';
 
 
-echo '<div class="temoignage" style="background-color:' . esc_attr($couleur_fond) . '; color:' . esc_attr($couleur_texte) . ';">'
+            echo '<div class="temoignage" style="background-color:' . esc_attr($couleur_fond) . '; color:' . esc_attr($couleur_texte) . ';">'
 ?>
-                <?php if (has_post_thumbnail()) : ?>
-                    <figure class="figure">
-                        <?php the_post_thumbnail('thumbnail', ['class' => 'photo-temoin']); ?>
-                    </figure>
-                <?php else : ?>
-                    <figure class="figure">
-                        <img src="<?php echo get_template_directory_uri(); ?>/pictures/default.jpg" alt="image par défaut" class="photo-temoin">
-                    </figure>
-                <?php endif; ?>
+            <?php if (has_post_thumbnail()) : ?>
+                <figure class="figure">
+                    <?php the_post_thumbnail('thumbnail', ['class' => 'photo-temoin']); ?>
+                </figure>
+            <?php else : ?>
+                <figure class="figure">
+                    <img src="<?php echo get_template_directory_uri(); ?>/pictures/default.jpg" alt="image par défaut" class="photo-temoin">
+                </figure>
+            <?php endif; ?>
 
-                <h3><?php echo ucfirst(get_the_title()); ?></h3>
+            <h3><?php echo ucfirst(get_the_title()); ?></h3>
 
-                <?php if ($entreprise) : ?>
-                    <p><strong>Entreprise :</strong> <?php echo esc_html($entreprise); ?></p>
-                <?php endif; ?>
+            <?php if ($entreprise) : ?>
+                <p><strong>Entreprise :</strong> <?php echo esc_html($entreprise); ?></p>
+            <?php endif; ?>
 
-                <?php if ($poste) : ?>
-                    <p><strong>Poste :</strong> <?php echo esc_html($poste); ?></p>
-                <?php endif; ?>
+           <?php if ($poste) : ?>
+        <p data-poste="<?php echo esc_attr($poste); ?>">
+            <strong>Poste :</strong> <?php echo esc_html($poste); ?>
+        </p>
+    <?php endif;?>
 
-                <div class="contenu"><?php the_content(); ?></div>
+            <div class="contenu"><?php the_content(); ?></div>
 
-                <?php if ($note) : ?>
-                    <div class="note">
-                        <?php
-                        for ($i = 1; $i <= 5; $i++) {
-                            echo ($i <= intval($note)) ? '⭐' : '☆';
-                        }
-                        ?>
-                    </div>
-                <?php endif; ?>
+            <?php if ($note) : ?>
+                <div class="note">
+                    <?php
+                    for ($i = 1; $i <= 5; $i++) {
+                        echo ($i <= intval($note)) ? '⭐' : '☆';
+                    }
+                    ?>
+                </div>
+            <?php endif; ?>
             </div>
 
     <?php endwhile;
@@ -78,12 +85,15 @@ add_shortcode('temoignages', 'afficher_temoignages_shortcode');
 
 add_action('init', 'send_temoignage_handler');
 
-function send_temoignage_handler()
-{
-    if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit'])) {
-        send_temoignage();
+
+    function send_temoignage_handler() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST' && 
+            isset($_POST['submit']) 
+            && isset($_POST['temoignage_nonce'])) {
+            send_temoignage();
+        }
     }
-}
+
 
 
 function temoignage_form()
@@ -92,7 +102,7 @@ function temoignage_form()
     ob_start();
     ?>
     <form method="POST" action="<?php echo esc_url(get_permalink()); ?>" enctype="multipart/form-data">
-        <?php wp_nonce_field('submit_wpnonce'); ?>
+        <?php wp_nonce_field('submit_wpnonce', 'temoignage_nonce'); ?>
         <div class="ligneForm">
             <label for="nom">Votre nom :</label>
             <input type="text" id="nom" name="nom" required />
@@ -138,7 +148,7 @@ add_shortcode('temoignage_form', 'temoignage_form');
 
 function send_temoignage()
 {
-    if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit']) && check_admin_referer('submit_wpnonce')) {
+    if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit']) && isset($_POST['temoignage_nonce'])  && wp_verify_nonce($_POST['temoignage_nonce'], 'submit_wpnonce') ) {
         $nom = sanitize_text_field($_POST['nom']);
         $temoignage = sanitize_textarea_field($_POST['temoignage']);
         $note = intval($_POST['note']);
@@ -215,7 +225,7 @@ add_action('add_meta_boxes', 'ajouter_metabox_temoignage');
 function render_metabox_temoignage($post)
 {
 
-    wp_nonce_field('sauver_info_temoignage', 'temoignage_nonce');
+    wp_nonce_field('metabox_temoignage_nonce', 'metabox_temoignage_field');
 
 
     $entreprise = get_post_meta($post->ID, 'entreprise', true);
@@ -229,7 +239,9 @@ function render_metabox_temoignage($post)
     echo '<input type="text" id="poste" name="poste" value="' . esc_attr($poste) . '" style="width:100%;" /></p>';
 }
 function sauver_metabox_temoignage($post_id)
-{
+{       if (get_post_type($post_id) !== 'temoignage') {
+    return;
+}
     // Sécurité (vérifie que c’est légitime)
     if (!isset($_POST['temoignage_nonce']) || !wp_verify_nonce($_POST['temoignage_nonce'], 'sauver_info_temoignage')) {
         return;
@@ -286,6 +298,9 @@ function afficher_metabox_article_id($post)
 }
 function sauvegarder_article_id($post_id)
 {
+    if (get_post_type($post_id) !== 'temoignage') {
+        return;
+    }
     if (array_key_exists('article_id', $_POST)) {
         update_post_meta(
             $post_id,
@@ -296,99 +311,201 @@ function sauvegarder_article_id($post_id)
 }
 add_action('save_post', 'sauvegarder_article_id');
 
+
+
 function ajouter_page_options_plugin()
 {
     add_submenu_page(
-        'edit.php?post_type=temoignage',  // parent slug (menu "Témoignage")
+        'edit.php?post_type=temoignage',
         'Options Témoignage',
         'Options',
-        'publish_posts',
-        'options_temoignage_plugin',      // slug de la page
-        'afficher_page_options_plugin'    // fonction callback qui affiche la page
+        'manage_options',
+        'options_temoignage_plugin',
+        'afficher_page_options_plugin'
     );
 }
 add_action('admin_menu', 'ajouter_page_options_plugin');
 
+
 function afficher_page_options_plugin()
 {
+    if (!current_user_can('manage_options')) {
+        wp_die(__('Vous n\'avez pas les permissions suffisantes.'));
+    }
+
+    if (false === get_option('options_couleurs_temoignage')) {
+        update_option('options_couleurs_temoignage', array(
+            'couleur_fond' => '#ffffff',
+            'couleur_text' => '#000000'
+        ));
+    }
     ?>
     <div class="wrap">
-        <h1>Options des Témoignages</h1>
-        <form method="post" action="options.php">
+        <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+        <form action="options.php" method="post">
             <?php
             settings_fields('options_temoignage_group');
             do_settings_sections('options_temoignage_plugin');
-            submit_button();
+            submit_button('Enregistrer les modifications');
             ?>
         </form>
     </div>
 <?php
 }
 
+
+
 function initialiser_options_temoignage()
 {
-    register_setting('options_temoignage_group', 'couleur_fond_temoignage');
-    register_setting('options_temoignage_group', 'couleur_text_temoignage');
+   
+    register_setting(
+        'options_temoignage_group',    
+        'options_couleurs_temoignage', 
+        array(
+            'type' => 'array',
+            'sanitize_callback' => 'sanitiser_options_couleurs_temoignage',
+            'default' => array(
+                'couleur_fond' => '#ffffff',
+                'couleur_text' => '#000000'
+            ),
+            'show_in_rest' => false
+        )
+    );
 
     add_settings_section(
-        'section_personnalisation',
-        'Personnalisation',
+        'section_couleurs_temoignage',
+        'Paramètres des couleurs',
         null,
         'options_temoignage_plugin'
     );
 
-
+ 
     add_settings_field(
-        'couleur_fond_temoignage',
-        'Couleur de fond des témoignages',
+        'couleur_fond',
+        'Couleur de fond',
         'afficher_champ_couleur_fond',
         'options_temoignage_plugin',
-        'section_personnalisation'
+        'section_couleurs_temoignage'
     );
 
-
     add_settings_field(
-        'couleur_text_temoignage',
-        'Couleur de texte des témoignages',
+        'couleur_text',
+        'Couleur du texte',
         'afficher_champ_couleur_text',
         'options_temoignage_plugin',
-        'section_personnalisation'
+        'section_couleurs_temoignage'
     );
 }
 add_action('admin_init', 'initialiser_options_temoignage');
 
-
 function afficher_champ_couleur_fond()
 {
-
-    $couleur_fond = get_option('couleur_fond_temoignage', '#ffffff');
-
-    echo '<input type="text" name="couleur_fond_temoignage" value="' . esc_attr($couleur_fond) . '" class="my-color-field" data-default-color="#ffffff" />';
+    $options = get_option('options_couleurs_temoignage');
+    $couleur_fond = isset($options['couleur_fond']) ? $options['couleur_fond'] : '#ffffff';
+?>
+    <input type="text"
+        name="options_couleurs_temoignage[couleur_fond]"
+        value="<?php echo esc_attr($couleur_fond); ?>"
+        class="my-color-field" />
+<?php
 }
-
 
 function afficher_champ_couleur_text()
 {
-
-    $couleur_text = get_option('couleur_text_temoignage', '#000000');
-
-    echo '<input type="text" name="couleur_text_temoignage" value="' . esc_attr($couleur_text) . '" class="my-color-field" data-default-color="#000000" />';
+    $options = get_option('options_couleurs_temoignage');
+    $couleur_text = isset($options['couleur_text']) ? $options['couleur_text'] : '#000000';
+?>
+    <input type="text"
+        name="options_couleurs_temoignage[couleur_text]"
+        value="<?php echo esc_attr($couleur_text); ?>"
+        class="my-color-field" />
+<?php
 }
+
+function sanitiser_options_couleurs_temoignage($input)
+{
+    $new_input = array();
+
+    if (isset($input['couleur_fond'])) {
+        $new_input['couleur_fond'] = sanitize_hex_color($input['couleur_fond']);
+    }
+
+    if (isset($input['couleur_text'])) {
+        $new_input['couleur_text'] = sanitize_hex_color($input['couleur_text']);
+    }
+
+    return $new_input;
+}
+
 
 function charger_assets_page_options($hook_suffix)
 {
-    
-    if ($hook_suffix === 'temoignage_page_options_temoignage_plugin') {
+    if ($hook_suffix === get_plugin_page_hookname('options_temoignage_plugin', 'edit.php?post_type=temoignage')) {
         wp_enqueue_style('wp-color-picker');
         wp_enqueue_script('wp-color-picker');
+        wp_add_inline_script('wp-color-picker', '
+            jQuery(document).ready(function($){
+                $(".my-color-field").wpColorPicker();
+            });
+        ');
     }
-    wp_enqueue_script(
-        'couleur-js',
-        plugin_dir_url(__FILE__) . 'assets/couleur.js',
-        array('wp-color-picker'),
-        false,
-        true
-    );
 }
 add_action('admin_enqueue_scripts', 'charger_assets_page_options');
 
+
+
+
+function shortcode_filtre_temoignages() {
+    global $wpdb;
+    $post_id = get_the_ID();
+    
+    // Récupérer les postes uniques
+    $postes = $wpdb->get_col($wpdb->prepare(
+        "SELECT DISTINCT pm_poste.meta_value 
+        FROM {$wpdb->postmeta} pm_poste
+        INNER JOIN {$wpdb->postmeta} pm_article 
+        ON pm_poste.post_id = pm_article.post_id
+        WHERE pm_poste.meta_key = 'poste' 
+        AND pm_article.meta_key = 'article_id'
+        AND pm_article.meta_value = %d
+        AND pm_poste.meta_value != '' 
+        ORDER BY pm_poste.meta_value ASC",
+        $post_id
+    ));
+
+    ob_start();
+    ?>
+    <div class="filtre-temoignages-wrapper">
+        <select id="filtre-poste" onchange="filtrerTemoignagesParPoste(this.value)">
+            <option value="">Tous les postes</option>
+            <?php foreach ($postes as $poste) : ?>
+                <option value="<?php echo esc_attr($poste); ?>">
+                    <?php echo esc_html($poste); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+
+    <script>
+    function filtrerTemoignagesParPoste(posteSelectionne) {
+        const temoignages = document.querySelectorAll('.temoignage');
+        
+        temoignages.forEach(temoignage => {
+            const posteTemoignage = temoignage.querySelector('[data-poste]');
+            if (!posteTemoignage) return;
+            
+            if (posteSelectionne === '' || posteTemoignage.getAttribute('data-poste') === posteSelectionne) {
+                temoignage.style.display = '';
+            } else {
+                temoignage.style.display = 'none';
+            }
+        });
+    }
+    </script>
+    <?php
+    return ob_get_clean();
+}
+add_shortcode('filtre_temoignages', 'shortcode_filtre_temoignages');
+
+    
+    
